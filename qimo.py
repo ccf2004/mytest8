@@ -361,28 +361,32 @@ def major_analysis_page():
     # 4. 出勤率柱状图 + 表格
     st.subheader("4. 各专业平均上课出勤率")
     chart3, table3 = st.columns([1, 1])
-    
+
     with chart3:
+        # 改用离散深色（高饱和度），避免浅色问题
         fig3 = px.bar(
             major_stats,
             x='专业',
             y='平均上课出勤率(%)',
-            color='平均上课出勤率(%)',
-            color_continuous_scale='purples',
+            color='专业',  # 按专业分配颜色（离散型）
+            color_discrete_sequence=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'],  # 深色高饱和配色
             title='各专业平均上课出勤率',
             labels={'平均上课出勤率(%)': '出勤率 (%)', '专业': '专业'},
             height=400,
             text='平均上课出勤率(%)'
-        )
+            )
         fig3.update_layout(
             plot_bgcolor='white',
             xaxis_tickangle=15,
             yaxis_range=[0, 100],
-            coloraxis_showscale=False
-        )
-        fig3.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+            showlegend=False  # 关闭图例（颜色已按专业区分，无需图例）
+            )
+        fig3.update_traces(
+            texttemplate='%{text:.1f}%',
+            textposition='outside',
+            marker=dict(line=dict(color='white', width=1))  # 增加白色边框，增强视觉区分
+            )
         st.plotly_chart(fig3, use_container_width=True)
-    
     with table3:
         attendance_table = major_stats[['专业', '平均上课出勤率(%)', '平均作业完成率(%)']].copy()
         st.dataframe(
