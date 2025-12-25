@@ -2,9 +2,9 @@ import streamlit as st
 import pickle
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from PIL import Image
 import io
 import os
@@ -18,39 +18,6 @@ st.set_page_config(
     page_icon="📚",
     layout="wide"
 )
-
-# ========== 核心修改：中文字体配置（适配Streamlit云端） ==========
-def setup_chinese_font():
-    """适配Streamlit云端的中文字体配置（优先用系统预装字体）"""
-    # 尝试加载系统预装的中文字体（Streamlit云端可能包含以下字体）
-    font_candidates = [
-        "WenQuanYi Zen Hei",  # Linux/macOS预装
-        "Heiti TC",          # macOS预装
-        "SimHei",            # Windows预装（云端可能没有，但作为备选）
-        "DejaVu Sans"        # 兜底字体
-    ]
-    
-    # 检测可用字体
-    available_fonts = [f.name for f in fm.fontManager.ttflist]
-    target_font = None
-    for font in font_candidates:
-        if font in available_fonts:
-            target_font = font
-            break
-    
-    # 设置字体
-    if target_font:
-        plt.rcParams['font.sans-serif'] = [target_font]
-    else:
-        # 极端情况：用matplotlib默认字体+unicode转义（不推荐，但能避免乱码）
-        plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
-    
-    plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
-    plt.rcParams['figure.facecolor'] = 'white'
-
-# 执行字体配置
-setup_chinese_font()
-
 
 # 全局加载数据和模型
 @st.cache_resource
@@ -109,15 +76,6 @@ def load_model_and_data():
 # 加载模型和数据
 model, feature_names, df = load_model_and_data()
 
-# 辅助函数：统一图表样式
-def get_plot_style(ax):
-    """统一图表样式"""
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.grid(axis='y', alpha=0.3, linestyle='--')
-    ax.tick_params(axis='both', labelsize=9)
-    return ax
-
 # 1. 项目概述页面函数（优化图片加载容错）
 def project_intro_page():
     """项目概述页面，展示系统介绍、目标、技术架构"""
@@ -149,33 +107,49 @@ def project_intro_page():
                 st.caption("💡 点击图片可放大查看")
             except Exception as e:
                 st.warning(f"图片加载失败：{str(e)}")
-                # 生成替代图表
+                # 生成替代图表（Plotly版本）
                 if df is not None:
                     sample_majors = df['专业'].value_counts().head(5).index
-                    sample_data = df[df['专业'].isin(sample_majors)].groupby('专业')['期末考试分数'].mean()
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    sample_data.plot(kind='bar', ax=ax, color=['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'])
-                    ax = get_plot_style(ax)
-                    ax.set_title('各专业平均期末成绩', fontsize=11)
-                    ax.set_xlabel('专业', fontsize=9)
-                    ax.set_ylabel('平均分数', fontsize=9)
-                    ax.tick_params(axis='x', rotation=45)
-                    plt.tight_layout()
-                    st.pyplot(fig)
+                    sample_data = df[df['专业'].isin(sample_majors)].groupby('专业')['期末考试分数'].mean().reset_index()
+                    
+                    fig = px.bar(
+                        sample_data,
+                        x='专业',
+                        y='期末考试分数',
+                        color='专业',
+                        color_discrete_sequence=['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'],
+                        title='各专业平均期末成绩',
+                        labels={'期末考试分数': '平均分数', '专业': '专业'},
+                        height=300
+                    )
+                    fig.update_layout(
+                        plot_bgcolor='white',
+                        xaxis_tickangle=45,
+                        showlegend=False
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("示意图文件（fenxi.PNG）未找到，显示替代图表")
             if df is not None:
                 sample_majors = df['专业'].value_counts().head(5).index
-                sample_data = df[df['专业'].isin(sample_majors)].groupby('专业')['期末考试分数'].mean()
-                fig, ax = plt.subplots(figsize=(6, 4))
-                sample_data.plot(kind='bar', ax=ax, color=['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'])
-                ax = get_plot_style(ax)
-                ax.set_title('各专业平均期末成绩', fontsize=11)
-                ax.set_xlabel('专业', fontsize=9)
-                ax.set_ylabel('平均分数', fontsize=9)
-                ax.tick_params(axis='x', rotation=45)
-                plt.tight_layout()
-                st.pyplot(fig)
+                sample_data = df[df['专业'].isin(sample_majors)].groupby('专业')['期末考试分数'].mean().reset_index()
+                
+                fig = px.bar(
+                    sample_data,
+                    x='专业',
+                    y='期末考试分数',
+                    color='专业',
+                    color_discrete_sequence=['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'],
+                    title='各专业平均期末成绩',
+                    labels={'期末考试分数': '平均分数', '专业': '专业'},
+                    height=300
+                )
+                fig.update_layout(
+                    plot_bgcolor='white',
+                    xaxis_tickangle=45,
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
     
     # 添加分隔横线
     st.markdown("---")
@@ -225,7 +199,7 @@ def project_intro_page():
     
     with arch_col3:
         st.info("**可视化**")
-        st.write("Plotly\nMatplotlib")
+        st.write("Plotly")
     
     with arch_col4:
         st.info("**机器学习**")
@@ -248,7 +222,7 @@ def project_intro_page():
             avg_score = df['期末考试分数'].mean()
             st.metric("平均期末成绩", f"{avg_score:.1f}")
 
-# 2. 专业数据分析页面（优化图表样式和异常处理）
+# 2. 专业数据分析页面（全Plotly版本）
 def major_analysis_page():
     """专业数据分析页面，展示各类统计图表"""
     if df is None:
@@ -280,132 +254,145 @@ def major_analysis_page():
         '期末考试分数': 'mean',
         '上课出勤率_百分比': 'mean',
         '作业完成率_百分比': 'mean'
-    }).round(2)
-    major_stats.columns = ['每周平均学时', '期中考试平均分', '期末考试平均分', '平均上课出勤率(%)', '平均作业完成率(%)']
+    }).round(2).reset_index()
+    major_stats.columns = ['专业', '每周平均学时', '期中考试平均分', '期末考试平均分', '平均上课出勤率(%)', '平均作业完成率(%)']
     
     # 计算各专业性别比例
     gender_stats = pd.crosstab(filtered_df['专业'], filtered_df['性别'])
     gender_stats['总计'] = gender_stats.sum(axis=1)
     gender_stats['男生比例(%)'] = (gender_stats['男'] / gender_stats['总计'] * 100).round(2)
     gender_stats['女生比例(%)'] = (gender_stats['女'] / gender_stats['总计'] * 100).round(2)
+    gender_stats = gender_stats.reset_index()
     
-    # 核心可视化展示（统一使用 1:1 列比例，确保水平对齐）
+    # 核心可视化展示
     st.header("📈 学生学业表现可视化分析")
     
-    # 1. 表格展示各专业统计数据（单独一行，全屏宽度）
+    # 1. 表格展示各专业统计数据
     st.subheader("1. 各专业核心统计数据")
-    st.dataframe(major_stats, use_container_width=True)
-    st.markdown("---")  # 添加分隔线，优化视觉层次
+    st.dataframe(major_stats.set_index('专业'), use_container_width=True)
+    st.markdown("---")
     
-    # 2. 双层柱状图 + 性别比例表格（1:1 水平对齐）
+    # 2. 性别比例柱状图 + 表格
     st.subheader("2. 各专业男女性别比例")
     chart1, table1 = st.columns([1, 1])
-    # 左侧图表
-    with chart1:
-        fig1, ax1 = plt.subplots(figsize=(9, 6))
-        majors = gender_stats.index
-        x = np.arange(len(majors))
-        width = 0.35
-        
-        bars1 = ax1.bar(x - width/2, gender_stats['男生比例(%)'], width, label='男生', color='#3498db', alpha=0.8)
-        bars2 = ax1.bar(x + width/2, gender_stats['女生比例(%)'], width, label='女生', color='#e74c3c', alpha=0.8)
-        
-        # 统一样式
-        ax1 = get_plot_style(ax1)
-        ax1.set_xlabel('专业', fontsize=10)
-        ax1.set_ylabel('比例 (%)', fontsize=10)
-        ax1.set_title('各专业男女性别比例', fontsize=12, pad=15)
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(majors, rotation=15, fontsize=9)
-        ax1.legend(fontsize=9, frameon=False)
-        
-        # 添加数值标签
-        for bar in bars1:
-            height = bar.get_height()
-            ax1.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                     f'{height}%', ha='center', va='bottom', fontsize=8)
-        for bar in bars2:
-            height = bar.get_height()
-            ax1.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                     f'{height}%', ha='center', va='bottom', fontsize=8)
-        
-        plt.tight_layout()
-        st.pyplot(fig1)
     
-    # 右侧表格
+    with chart1:
+        # 转换为长格式用于Plotly
+        gender_long = pd.melt(
+            gender_stats,
+            id_vars=['专业'],
+            value_vars=['男生比例(%)', '女生比例(%)'],
+            var_name='性别',
+            value_name='比例(%)'
+        )
+        
+        fig1 = px.bar(
+            gender_long,
+            x='专业',
+            y='比例(%)',
+            color='性别',
+            barmode='group',
+            color_discrete_map={'男生比例(%)': '#3498db', '女生比例(%)': '#e74c3c'},
+            title='各专业男女性别比例',
+            labels={'比例(%)': '比例 (%)', '专业': '专业'},
+            height=400
+        )
+        fig1.update_layout(
+            plot_bgcolor='white',
+            xaxis_tickangle=15,
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+        )
+        # 添加数值标签
+        fig1.update_traces(texttemplate='%{y:.1f}%', textposition='outside')
+        st.plotly_chart(fig1, use_container_width=True)
+    
     with table1:
-        st.dataframe(gender_stats[['男', '女', '总计', '男生比例(%)', '女生比例(%)']], 
-                    use_container_width=True, height=400)
+        st.dataframe(
+            gender_stats[['专业', '男', '女', '总计', '男生比例(%)', '女生比例(%)']].set_index('专业'),
+            use_container_width=True,
+            height=400
+        )
     st.markdown("---")
     
-    # 3. 折线图 + 期中期末分数表格（1:1 水平对齐）
+    # 3. 期中期末分数对比折线图 + 表格
     st.subheader("3. 各专业期中/期末考试分数对比")
     chart2, table2 = st.columns([1, 1])
-    # 左侧图表
-    with chart2:
-        fig2, ax2 = plt.subplots(figsize=(9, 6))
-        majors = major_stats.index
-        mid_scores = major_stats['期中考试平均分']
-        final_scores = major_stats['期末考试平均分']
-        
-        line1 = ax2.plot(majors, mid_scores, marker='o', linewidth=2.5, markersize=6, 
-                        label='期中考试平均分', color='#f39c12', alpha=0.8)
-        line2 = ax2.plot(majors, final_scores, marker='s', linewidth=2.5, markersize=6, 
-                        label='期末考试平均分', color='#2ecc71', alpha=0.8)
-        
-        # 统一样式
-        ax2 = get_plot_style(ax2)
-        ax2.set_xlabel('专业', fontsize=10)
-        ax2.set_ylabel('平均分', fontsize=10)
-        ax2.set_title('各专业期中/期末考试分数对比', fontsize=12, pad=15)
-        ax2.set_xticklabels(majors, rotation=15, fontsize=9)
-        ax2.legend(fontsize=9, frameon=False)
-        ax2.set_ylim(0, 100)  # 固定y轴范围，便于对比
-        
-        plt.tight_layout()
-        st.pyplot(fig2)
     
-    # 右侧表格
+    with chart2:
+        # 转换为长格式
+        score_long = pd.melt(
+            major_stats,
+            id_vars=['专业'],
+            value_vars=['期中考试平均分', '期末考试平均分'],
+            var_name='考试类型',
+            value_name='平均分'
+        )
+        
+        fig2 = px.line(
+            score_long,
+            x='专业',
+            y='平均分',
+            color='考试类型',
+            symbol='考试类型',
+            color_discrete_map={'期中考试平均分': '#f39c12', '期末考试平均分': '#2ecc71'},
+            title='各专业期中/期末考试分数对比',
+            labels={'平均分': '平均分', '专业': '专业'},
+            height=400,
+            markers=True
+        )
+        fig2.update_layout(
+            plot_bgcolor='white',
+            xaxis_tickangle=15,
+            yaxis_range=[0, 100],
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+        )
+        st.plotly_chart(fig2, use_container_width=True)
+    
     with table2:
-        score_table = major_stats[['期中考试平均分', '期末考试平均分']].copy()
+        score_table = major_stats[['专业', '期中考试平均分', '期末考试平均分']].copy()
         score_table['分数提升'] = (score_table['期末考试平均分'] - score_table['期中考试平均分']).round(2)
-        st.dataframe(score_table, use_container_width=True, height=400)
+        st.dataframe(
+            score_table.set_index('专业'),
+            use_container_width=True,
+            height=400
+        )
     st.markdown("---")
     
-    # 4. 出勤率柱状图 + 出勤率表格（1:1 水平对齐）
+    # 4. 出勤率柱状图 + 表格
     st.subheader("4. 各专业平均上课出勤率")
     chart3, table3 = st.columns([1, 1])
-    # 左侧图表
-    with chart3:
-        fig3, ax3 = plt.subplots(figsize=(9, 6))
-        majors = major_stats.index
-        attendance = major_stats['平均上课出勤率(%)']
-        bars = ax3.bar(majors, attendance, color='#9b59b6', alpha=0.8, edgecolor='white', linewidth=1)
-        
-        # 统一样式
-        ax3 = get_plot_style(ax3)
-        ax3.set_xlabel('专业', fontsize=10)
-        ax3.set_ylabel('出勤率 (%)', fontsize=10)
-        ax3.set_title('各专业平均上课出勤率', fontsize=12, pad=15)
-        ax3.set_xticklabels(majors, rotation=15, fontsize=9)
-        ax3.set_ylim(0, 100)
-        
-        # 添加数值标签
-        for bar in bars:
-            height = bar.get_height()
-            ax3.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                     f'{height}%', ha='center', va='bottom', fontsize=8, fontweight='bold')
-        
-        plt.tight_layout()
-        st.pyplot(fig3)
     
-    # 右侧表格
+    with chart3:
+        fig3 = px.bar(
+            major_stats,
+            x='专业',
+            y='平均上课出勤率(%)',
+            color='平均上课出勤率(%)',
+            color_continuous_scale='purples',
+            title='各专业平均上课出勤率',
+            labels={'平均上课出勤率(%)': '出勤率 (%)', '专业': '专业'},
+            height=400,
+            text='平均上课出勤率(%)'
+        )
+        fig3.update_layout(
+            plot_bgcolor='white',
+            xaxis_tickangle=15,
+            yaxis_range=[0, 100],
+            coloraxis_showscale=False
+        )
+        fig3.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        st.plotly_chart(fig3, use_container_width=True)
+    
     with table3:
-        attendance_table = major_stats[['平均上课出勤率(%)', '平均作业完成率(%)']].copy()
-        st.dataframe(attendance_table, use_container_width=True, height=400)
+        attendance_table = major_stats[['专业', '平均上课出勤率(%)', '平均作业完成率(%)']].copy()
+        st.dataframe(
+            attendance_table.set_index('专业'),
+            use_container_width=True,
+            height=400
+        )
     st.markdown("---")
     
-    # 5. 学习时长与成绩关系（单独一行，全屏宽度）
+    # 5. 学习时长与成绩关系
     st.subheader("5. 学习时长 vs 期末成绩")
     fig4 = px.scatter(
         filtered_df,
@@ -417,25 +404,24 @@ def major_analysis_page():
         labels={'每周学习时长（小时）': '每周学习时长（小时）', '期末考试分数': '期末成绩'},
         opacity=0.7,
         height=600
-        )
-    # 优化plotly图表样式（修正gridalpha错误）
+    )
     fig4.update_layout(
         plot_bgcolor='white',
-        xaxis=dict(showgrid=True, gridwidth=1, gridcolor='rgba(0, 0, 0, 0.05)'),  # 用gridwidth和gridcolor替代gridalpha
+        xaxis=dict(showgrid=True, gridwidth=1, gridcolor='rgba(0, 0, 0, 0.05)'),
         yaxis=dict(showgrid=True, gridwidth=1, gridcolor='rgba(0, 0, 0, 0.05)'),
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
-        )
+    )
     st.plotly_chart(fig4, use_container_width=True)
     st.markdown("---")
     
-    # 6. 大数据管理专业专项分析（单独模块，优化布局）
+    # 6. 大数据管理专业专项分析
     st.subheader("6. 大数据管理专业专项分析")
     target_major = '大数据管理'
-    if target_major in major_stats.index:
-        bigdata_stats = major_stats.loc[target_major]
+    if target_major in major_stats['专业'].values:
+        bigdata_stats = major_stats[major_stats['专业'] == target_major].iloc[0]
         bigdata_df = filtered_df[filtered_df['专业'] == target_major].copy()
         
-        # 步骤1：核心指标卡片（1行4列，水平排列）
+        # 步骤1：核心指标卡片
         st.subheader("核心指标")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -450,52 +436,54 @@ def major_analysis_page():
         with col4:
             st.metric(label="平均学习时长", value=f"{bigdata_stats['每周平均学时']}小时")
         
-        # 步骤2：分布图表（1:1 水平对齐）
+        # 步骤2：分布图表
         if len(bigdata_df) >= 3:
             st.subheader("数据分布")
             col_chart4, col_chart5 = st.columns([1, 1])
-            # 左列：期末考试分数分布直方图
+            
+            # 左列：期末成绩分布直方图（Plotly）
             with col_chart4:
                 st.subheader("期末成绩分布")
                 bigdata_final_scores = pd.to_numeric(bigdata_df['期末考试分数'], errors='coerce').dropna()
-                fig5, ax5 = plt.subplots(figsize=(8, 5))
-                bins = min(10, len(bigdata_final_scores) - 1) if len(bigdata_final_scores) > 1 else 5
-                n, bins_edges, patches = ax5.hist(bigdata_final_scores, bins=bins, color='#3498db', alpha=0.8, edgecolor='white')
                 
-                # 统一样式
-                ax5 = get_plot_style(ax5)
-                ax5.set_xlabel('期末测试分数', fontsize=10)
-                ax5.set_ylabel('人数', fontsize=10)
-                ax5.set_title('期末成绩分布', fontsize=12, pad=15)
-                
-                plt.tight_layout()
-                st.pyplot(fig5)
+                fig5 = px.histogram(
+                    x=bigdata_final_scores,
+                    nbins=min(10, len(bigdata_final_scores)-1) if len(bigdata_final_scores) > 1 else 5,
+                    title='期末成绩分布',
+                    labels={'x': '期末测试分数', 'y': '人数'},
+                    color_discrete_sequence=['#3498db'],
+                    height=350
+                )
+                fig5.update_layout(
+                    plot_bgcolor='white',
+                    bargap=0.1
+                )
+                st.plotly_chart(fig5, use_container_width=True)
             
-            # 右列：学习时长分布箱线图
+            # 右列：学习时长分布箱线图（Plotly）
             with col_chart5:
                 st.subheader("学习时长分布")
                 bigdata_study_hours = pd.to_numeric(bigdata_df['每周学习时长（小时）'], errors='coerce').dropna()
-                fig6, ax6 = plt.subplots(figsize=(8, 5))
-                box_plot = ax6.boxplot(bigdata_study_hours, patch_artist=True, 
-                                      boxprops=dict(facecolor='#3498db', alpha=0.8),
-                                      medianprops=dict(color='red', linewidth=2))
                 
-                # 统一样式
-                ax6 = get_plot_style(ax6)
-                ax6.set_ylabel('每周学习时长（小时）', fontsize=10)
-                ax6.set_title('学习时长分布', fontsize=12, pad=15)
-                ax6.set_xticks([])
-                
-                plt.tight_layout()
-                st.pyplot(fig6)
+                fig6 = px.box(
+                    y=bigdata_study_hours,
+                    title='学习时长分布',
+                    labels={'y': '每周学习时长（小时）'},
+                    color_discrete_sequence=['#3498db'],
+                    height=350
+                )
+                fig6.update_layout(
+                    plot_bgcolor='white',
+                    xaxis_visible=False
+                )
+                st.plotly_chart(fig6, use_container_width=True)
         else:
             st.info(f"ℹ️ 大数据管理专业仅{len(bigdata_df)}名学生，暂不展示分布图表（建议样本量≥3）")
     else:
-        # 显示所有专业选项，方便用户核对
         st.warning(f"⚠️ 未查询到【{target_major}】专业数据")
         st.info(f"当前数据包含的专业：{', '.join(df['专业'].unique())}")
 
-# 3. 成绩预测页面（优化用户体验）
+# 3. 成绩预测页面（保持不变）
 def score_prediction_page():
     """期末成绩预测页面，使用真实模型进行预测"""
     if model is None or df is None or feature_names is None:
@@ -605,9 +593,7 @@ def score_prediction_page():
                     else:
                         st.warning("💪 加油！你的期末成绩暂时不及格，但是只要努力就一定能进步！")
                 
-            # 显示对应图片
-                
-                # 定义图片路径
+                # 显示对应图片
                 success_img_path = "zhuhe.png"  # 及格图片路径
                 encourage_img_path = "guli.jpeg"  # 不及格图片路径
                     
@@ -630,7 +616,7 @@ def score_prediction_page():
                         except Exception as e:
                             st.warning(f"鼓励图片加载失败: {str(e)}")
                     else:
-                         st.warning(f"未找到鼓励图片，请确保{encourage_img_path}文件存在")
+                        st.warning(f"未找到鼓励图片，请确保{encourage_img_path}文件存在")
                 
                 # 个性化学习建议
                 st.subheader("💡 个性化学习建议")
@@ -669,15 +655,15 @@ def score_prediction_page():
                 st.error(f"❌ 预测出错：{str(e)}")
                 st.info("请检查输入数据是否合理，或刷新页面重试！")
 
-# 侧边栏导航（优化样式）
+# 侧边栏导航
 st.sidebar.title("📑 导航菜单")
 nav_option = st.sidebar.radio(
-    "",  # 移除默认标题，用自定义标题
+    "",  # 移除默认标题
     ["项目介绍", "专业数据分析", "成绩预测"],
     index=0
 )
 
-# 数据概览侧边栏（优化显示）
+# 数据概览侧边栏
 if df is not None:
     st.sidebar.markdown("---")
     st.sidebar.subheader("📊 数据概览")
@@ -687,7 +673,7 @@ if df is not None:
     st.sidebar.write(f"女生数：{len(df[df['性别']=='女']):,}")
     st.sidebar.write(f"平均成绩：{df['期末考试分数'].mean():.1f}分")
 
-# 底部信息（优化显示）
+# 底部信息
 st.sidebar.markdown("---")
 st.sidebar.info("""
 © 2025 学生成绩分析与预测系统  
@@ -695,7 +681,7 @@ st.sidebar.info("""
 💡 提示：筛选条件可在专业数据分析页面侧边栏调整
 """)
 
-# 根据导航选择展示对应页面
+# 导航逻辑
 if nav_option == "项目介绍":
     project_intro_page()
 elif nav_option == "专业数据分析":
