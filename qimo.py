@@ -3,6 +3,7 @@ import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 import plotly.express as px
 from PIL import Image
 import io
@@ -19,9 +20,16 @@ st.set_page_config(
 )
 
 # 设置中文字体（解决matplotlib中文显示问题）
-plt.rcParams['font.sans-serif'] = ['SIMHEI', 'Microsoft YaHei', 'Arial Unicode MS']  # 增加字体备选
+font_path = 'SIMHEI.ttf'
+if os.path.exists(font_path):
+    font_prop = fm.FontProperties(fname=font_path)
+    plt.rcParams['font.sans-serif'] = [font_prop.get_name()]
+else:
+    # 兜底方案
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans']
+
 plt.rcParams['axes.unicode_minus'] = False
-plt.rcParams['figure.facecolor'] = 'white'  # 图表背景色适配白色页面
+plt.rcParams['figure.facecolor'] = 'white'
 
 # 全局加载数据和模型
 @st.cache_resource
