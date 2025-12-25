@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 # 设置中文字体（解决matplotlib中文显示问题）
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']  # 增加字体备选
+plt.rcParams['font.sans-serif'] = ['黑体', 'Microsoft YaHei', 'Arial Unicode MS']  # 增加字体备选
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['figure.facecolor'] = 'white'  # 图表背景色适配白色页面
 
