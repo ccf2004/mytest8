@@ -7,7 +7,7 @@ import matplotlib.font_manager as fm
 import plotly.express as px
 from PIL import Image
 import io
-import os  # 新增新增：用于文件存在性判断
+import os
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
@@ -19,17 +19,38 @@ st.set_page_config(
     layout="wide"
 )
 
-# 设置中文字体（解决matplotlib中文显示问题）
-font_path = 'SIMHEI.ttf'
-if os.path.exists(font_path):
-    font_prop = fm.FontProperties(fname=font_path)
-    plt.rcParams['font.sans-serif'] = [font_prop.get_name()]
-else:
-    # 兜底方案
-    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans']
+# ========== 核心修改：中文字体配置（适配Streamlit云端） ==========
+def setup_chinese_font():
+    """适配Streamlit云端的中文字体配置（优先用系统预装字体）"""
+    # 尝试加载系统预装的中文字体（Streamlit云端可能包含以下字体）
+    font_candidates = [
+        "WenQuanYi Zen Hei",  # Linux/macOS预装
+        "Heiti TC",          # macOS预装
+        "SimHei",            # Windows预装（云端可能没有，但作为备选）
+        "DejaVu Sans"        # 兜底字体
+    ]
+    
+    # 检测可用字体
+    available_fonts = [f.name for f in fm.fontManager.ttflist]
+    target_font = None
+    for font in font_candidates:
+        if font in available_fonts:
+            target_font = font
+            break
+    
+    # 设置字体
+    if target_font:
+        plt.rcParams['font.sans-serif'] = [target_font]
+    else:
+        # 极端情况：用matplotlib默认字体+unicode转义（不推荐，但能避免乱码）
+        plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
+    
+    plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+    plt.rcParams['figure.facecolor'] = 'white'
 
-plt.rcParams['axes.unicode_minus'] = False
-plt.rcParams['figure.facecolor'] = 'white'
+# 执行字体配置
+setup_chinese_font()
+
 
 # 全局加载数据和模型
 @st.cache_resource
